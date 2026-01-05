@@ -118,34 +118,32 @@ async def search_hotels(
 
 
 # ============================================================
-# Tool 4: 여행 일정 생성 (숙소 기반 동선)
+# Tool 4: 여행 일정 생성
 # ============================================================
 @mcp.tool()
 async def plan_trip(
     destination: str,
     start_date: str,
     end_date: str,
-    accommodation: str = "",
     transport: str = "car",
     themes: list[str] | None = None,
     adults: int = 2
 ) -> str:
     """
-    숙소 위치 기반으로 여행 일정을 생성합니다.
+    여행 일정을 생성합니다. (국내 전용)
     
-    숙소 주변 맛집, 관광지, 카페를 검색하여 동선을 짜줍니다.
+    카카오맵 기반 맛집, 관광지, 카페를 검색하여 일정을 짜줍니다.
     항공권/숙소 예약은 search_flights, search_hotels를 사용하세요.
     
     Args:
         destination: 여행지 (예: "제주", "부산", "강릉")
         start_date: 시작일 (YYYY-MM-DD)
         end_date: 종료일 (YYYY-MM-DD)
-        accommodation: 숙소 이름/위치 (예: "제주 라마다호텔", "해운대 파라다이스호텔")
         transport: 이동수단 - "car"(자차/렌트카), "public"(대중교통) (기본: car)
         themes: 여행 테마 (선택, 예: ["맛집", "자연", "카페"])
         adults: 인원 수 (기본 2명)
     """
-    return await _plan_trip(destination, start_date, end_date, accommodation, transport, themes, adults)
+    return await _plan_trip(destination, start_date, end_date, transport, themes, adults)
 
 
 # ============================================================
