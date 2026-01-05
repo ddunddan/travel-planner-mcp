@@ -162,9 +162,10 @@ def get_yanolja_url(
     keyword = quote(destination)
     
     params = {
-        "checkin": checkin_date,
-        "checkout": checkout_date,
-        "personal": adults,
+        "keyword": quote(destination),
+        "checkinDate": checkin_date,
+        "checkoutDate": checkout_date,
+        "adultPax": adults,
     }
     
     return f"https://www.yanolja.com/search/{keyword}?{urlencode(params)}"
