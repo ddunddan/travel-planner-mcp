@@ -128,6 +128,11 @@ async def plan_trip(
     
     num_days = (end - start).days + 1
     nights = num_days - 1
+    
+    # 최대 2박 3일 제한 (API 호출 최적화)
+    if num_days > 3:
+        return "⚠️ 현재 최대 2박 3일까지 일정 생성이 가능합니다.\n\n더 긴 여행은 여러 번 나눠서 요청해주세요!\n예: 1~3일, 4~6일"
+    
     is_domestic = is_korea(destination)
     
     if not is_domestic:
