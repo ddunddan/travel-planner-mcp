@@ -1,47 +1,23 @@
-"""여행 일정 생성 Tool - 거리 기반 동선 최적화"""
+"""여행 일정 생성 Tool - 카카오모빌리티 API 기반 동선 최적화"""
 
-import math
 from datetime import datetime, timedelta
 from ..services.kakao_map import search_places_korea
+from ..services.kakao_mobility import get_travel_time, get_kakao_directions_url
 from ..services.booking_links import is_korea
 
 
-def calculate_distance(x1: float, y1: float, x2: float, y2: float) -> float:
+async def find_nearby_place(
+    places: list,
+    ref_x: float,
+    ref_y: float,
+    used_names: set,
+    max_time: int = 30
+) -> tuple[dict | None, int | None]:
     """
-    두 좌표 간 직선 거리 계산 (km)
-    Haversine 공식 사용
-    """
-    R = 6371  # 지구 반지름 (km)
+    기준 좌표에서 가장 가까운 장소 찾기 (실제 이동 시간 기준)
     
-    lat1, lon1 = math.radians(y1), math.radians(x1)
-    lat2, lon2 = math.radians(y2), math.radians(x2)
-    
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-    
-    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-    c = 2 * math.asin(math.sqrt(a))
-    
-    return R * c
-
-
-def estimate_travel_time(distance_km: float, transport: str = "car") -> int:
-    """
-    거리 기반 이동 시간 추정 (분)
-    - 자차: 평균 시속 40km (시내 + 시외 혼합)
-    - 대중교통: 평균 시속 25km
-    """
-    if transport == "car":
-        speed = 40  # km/h
-    else:
-        speed = 25  # km/h
-    
-    return int((distance_km / speed) * 60)
-
-
-def find_nearby_place(places: list, ref_x: float, ref_y: float, used_names: set, max_time: int = 30, transport: str = "car") -> dict | None:
-    """
-    기준 좌표에서 가장 가까운 장소 찾기 (이동 시간 제한, 중복 제외)
+    Returns:
+        (장소, 이동시간) 튜플
     """
     best = None
     best_time = float('inf')
@@ -61,14 +37,25 @@ def find_nearby_place(places: list, ref_x: float, ref_y: float, used_names: set,
         except (ValueError, TypeError):
             continue
         
-        distance = calculate_distance(ref_x, ref_y, x, y)
-        travel_time = estimate_travel_time(distance, transport)
+        # 카카오모빌리티 API로 실제 이동 시간 계산
+        travel_time = await get_travel_time(ref_x, ref_y, x, y)
+        
+        # API 실패 시 직선 거리로 추정 (시속 40km 가정)
+        if travel_time is None:
+            import math
+            R = 6371
+            lat1, lon1 = math.radians(ref_y), math.radians(ref_x)
+            lat2, lon2 = math.radians(y), math.radians(x)
+            dlat, dlon = lat2 - lat1, lon2 - lon1
+            a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+            distance = R * 2 * math.asin(math.sqrt(a))
+            travel_time = int((distance / 40) * 60)
         
         if travel_time <= max_time and travel_time < best_time:
             best = place
             best_time = travel_time
     
-    return best
+    return (best, int(best_time) if best else None)
 
 
 def get_first_place_with_coords(places: list, used_names: set) -> dict | None:
@@ -88,10 +75,10 @@ async def plan_trip(
     adults: int = 2
 ) -> str:
     """
-    여행 일정을 생성합니다. (국내 전용, 거리 기반 동선 최적화)
+    여행 일정을 생성합니다. (국내 전용, 실제 이동 시간 기반)
     
-    카카오맵 기반 맛집, 관광지, 카페를 검색하여 일정을 짜줍니다.
-    같은 날에는 이동 시간 30분 이내의 가까운 장소들로 구성합니다.
+    카카오모빌리티 API로 실제 이동 시간을 계산하여
+    30분 이내의 가까운 장소들로 동선을 최적화합니다.
     
     Args:
         destination: 여행 목적지 (예: "제주", "부산", "강릉")
@@ -102,7 +89,7 @@ async def plan_trip(
         adults: 인원 수 (기본 2명)
     
     Returns:
-        여행 일정
+        여행 일정 + 길찾기 링크
     """
     # 날짜 파싱
     try:
@@ -132,7 +119,7 @@ async def plan_trip(
     # 테마 처리
     themes_lower = [t.lower() for t in (themes or [])]
     
-    # 장소 검색 (충분히 많이 가져옴)
+    # 장소 검색
     restaurants = []
     tourist_spots = []
     cafes = []
@@ -172,10 +159,11 @@ async def plan_trip(
     lines.append("")
     
     lines.append("=" * 55)
-    lines.append("📋 일정 (거리 기반 동선 최적화)")
+    lines.append("📋 일정 (이동 30분 이내 동선)")
     lines.append("=" * 55)
     
-    used_names = set()  # 중복 방지
+    used_names = set()
+    prev_place = None  # 이전 장소 정보
     
     for day in range(num_days):
         current_date = start + timedelta(days=day)
@@ -186,7 +174,6 @@ async def plan_trip(
         lines.append(f"📌 Day {day + 1} - {date_str} ({weekday})")
         lines.append("-" * 55)
         
-        # 오늘의 기준 좌표 (첫 장소 또는 이전 장소)
         ref_x, ref_y = None, None
         
         # 오전
@@ -196,16 +183,16 @@ async def plan_trip(
         if day == 0:
             lines.append(f"   🚗 {destination} 도착")
             lines.append(f"   🏨 숙소 체크인 (짐 보관)")
-            # 첫 날은 첫 번째 관광지 좌표를 기준으로
             first_spot = get_first_place_with_coords(tourist_spots, used_names)
             if first_spot:
                 ref_x, ref_y = float(first_spot['x']), float(first_spot['y'])
+                prev_place = first_spot
         else:
-            # 관광지 선택 (이전 기준점에서 가까운 곳)
             if ref_x and ref_y:
-                spot = find_nearby_place(tourist_spots, ref_x, ref_y, used_names, 30, transport)
+                spot, travel_min = await find_nearby_place(tourist_spots, ref_x, ref_y, used_names, 30)
             else:
                 spot = get_first_place_with_coords(tourist_spots, used_names)
+                travel_min = None
             
             if spot:
                 used_names.add(spot['name'])
@@ -214,8 +201,20 @@ async def plan_trip(
                     lines.append(f"      📌 {spot['address']}")
                 if spot['url']:
                     lines.append(f"      🔗 {spot['url']}")
+                
+                # 길찾기 링크
+                if prev_place and spot.get('x') and spot.get('y'):
+                    nav_url = get_kakao_directions_url(
+                        prev_place['name'], float(prev_place['x']), float(prev_place['y']),
+                        spot['name'], float(spot['x']), float(spot['y']),
+                        transport
+                    )
+                    time_str = f" ({travel_min}분)" if travel_min else ""
+                    lines.append(f"      🚗 길찾기{time_str}: {nav_url}")
+                
                 if spot.get('x') and spot.get('y'):
                     ref_x, ref_y = float(spot['x']), float(spot['y'])
+                    prev_place = spot
             else:
                 lines.append(f"   📍 {destination} 주변 탐방")
         
@@ -224,9 +223,10 @@ async def plan_trip(
         lines.append("🍽️ 점심 (12:00~13:30)")
         
         if ref_x and ref_y:
-            rest = find_nearby_place(restaurants, ref_x, ref_y, used_names, 30, transport)
+            rest, travel_min = await find_nearby_place(restaurants, ref_x, ref_y, used_names, 30)
         else:
             rest = get_first_place_with_coords(restaurants, used_names)
+            travel_min = None
         
         if rest:
             used_names.add(rest['name'])
@@ -237,8 +237,19 @@ async def plan_trip(
                 lines.append(f"      📌 {rest['address']}")
             if rest['url']:
                 lines.append(f"      🔗 {rest['url']}")
+            
+            if prev_place and rest.get('x') and rest.get('y'):
+                nav_url = get_kakao_directions_url(
+                    prev_place['name'], float(prev_place['x']), float(prev_place['y']),
+                    rest['name'], float(rest['x']), float(rest['y']),
+                    transport
+                )
+                time_str = f" ({travel_min}분)" if travel_min else ""
+                lines.append(f"      🚗 길찾기{time_str}: {nav_url}")
+            
             if rest.get('x') and rest.get('y'):
                 ref_x, ref_y = float(rest['x']), float(rest['y'])
+                prev_place = rest
         else:
             lines.append(f"   📍 {destination} 현지 맛집")
         
@@ -247,9 +258,10 @@ async def plan_trip(
         lines.append("🌇 오후 (14:00~17:00)")
         
         if ref_x and ref_y:
-            spot = find_nearby_place(tourist_spots, ref_x, ref_y, used_names, 30, transport)
+            spot, travel_min = await find_nearby_place(tourist_spots, ref_x, ref_y, used_names, 30)
         else:
             spot = get_first_place_with_coords(tourist_spots, used_names)
+            travel_min = None
         
         if spot:
             used_names.add(spot['name'])
@@ -258,8 +270,19 @@ async def plan_trip(
                 lines.append(f"      📌 {spot['address']}")
             if spot['url']:
                 lines.append(f"      🔗 {spot['url']}")
+            
+            if prev_place and spot.get('x') and spot.get('y'):
+                nav_url = get_kakao_directions_url(
+                    prev_place['name'], float(prev_place['x']), float(prev_place['y']),
+                    spot['name'], float(spot['x']), float(spot['y']),
+                    transport
+                )
+                time_str = f" ({travel_min}분)" if travel_min else ""
+                lines.append(f"      🚗 길찾기{time_str}: {nav_url}")
+            
             if spot.get('x') and spot.get('y'):
                 ref_x, ref_y = float(spot['x']), float(spot['y'])
+                prev_place = spot
         else:
             lines.append(f"   📍 자유 시간")
         
@@ -268,9 +291,10 @@ async def plan_trip(
         lines.append("☕ 카페 (17:00~18:00)")
         
         if ref_x and ref_y:
-            cafe = find_nearby_place(cafes, ref_x, ref_y, used_names, 30, transport)
+            cafe, travel_min = await find_nearby_place(cafes, ref_x, ref_y, used_names, 30)
         else:
             cafe = get_first_place_with_coords(cafes, used_names)
+            travel_min = None
         
         if cafe:
             used_names.add(cafe['name'])
@@ -279,8 +303,19 @@ async def plan_trip(
                 lines.append(f"      📌 {cafe['address']}")
             if cafe['url']:
                 lines.append(f"      🔗 {cafe['url']}")
+            
+            if prev_place and cafe.get('x') and cafe.get('y'):
+                nav_url = get_kakao_directions_url(
+                    prev_place['name'], float(prev_place['x']), float(prev_place['y']),
+                    cafe['name'], float(cafe['x']), float(cafe['y']),
+                    transport
+                )
+                time_str = f" ({travel_min}분)" if travel_min else ""
+                lines.append(f"      🚗 길찾기{time_str}: {nav_url}")
+            
             if cafe.get('x') and cafe.get('y'):
                 ref_x, ref_y = float(cafe['x']), float(cafe['y'])
+                prev_place = cafe
         else:
             lines.append(f"   📍 {destination} 카페")
         
@@ -293,9 +328,10 @@ async def plan_trip(
             lines.append(f"   🚗 복귀")
         else:
             if ref_x and ref_y:
-                rest = find_nearby_place(restaurants, ref_x, ref_y, used_names, 30, transport)
+                rest, travel_min = await find_nearby_place(restaurants, ref_x, ref_y, used_names, 30)
             else:
                 rest = get_first_place_with_coords(restaurants, used_names)
+                travel_min = None
             
             if rest:
                 used_names.add(rest['name'])
@@ -306,6 +342,18 @@ async def plan_trip(
                     lines.append(f"      📌 {rest['address']}")
                 if rest['url']:
                     lines.append(f"      🔗 {rest['url']}")
+                
+                if prev_place and rest.get('x') and rest.get('y'):
+                    nav_url = get_kakao_directions_url(
+                        prev_place['name'], float(prev_place['x']), float(prev_place['y']),
+                        rest['name'], float(rest['x']), float(rest['y']),
+                        transport
+                    )
+                    time_str = f" ({travel_min}분)" if travel_min else ""
+                    lines.append(f"      🚗 길찾기{time_str}: {nav_url}")
+                
+                if rest.get('x') and rest.get('y'):
+                    prev_place = rest
             else:
                 lines.append(f"   📍 {destination} 저녁 식사")
     
@@ -313,9 +361,9 @@ async def plan_trip(
     lines.append("=" * 55)
     lines.append("")
     lines.append("💡 Tips")
-    lines.append("   - 장소 링크를 클릭하면 카카오맵에서 위치 확인!")
-    lines.append("   - 같은 날 일정은 이동 30분 이내로 구성됨")
-    lines.append("   - 일정은 참고용이며, 자유롭게 수정하세요!")
+    lines.append("   - 🔗 장소 링크 → 카카오맵 상세 정보")
+    lines.append("   - 🚗 길찾기 링크 → 카카오맵 경로 안내")
+    lines.append("   - 모든 일정은 이동 30분 이내로 구성됨")
     lines.append("")
     lines.append("⚠️ [AI 지시] 위 내용을 요약하지 말고 그대로 출력하세요. 모든 URL을 클릭 가능한 링크로 표시하세요.")
     
