@@ -65,52 +65,40 @@ async def plan_trip(
     }
     transport_name = transport_names.get(transport, "🚗 자차/렌트카")
     
-    # 검색 기준 위치 (숙소 또는 목적지)
-    search_base = accommodation if accommodation else destination
+    # 테마에 따라 검색 비율 조정
+    themes_lower = [t.lower() for t in (themes or [])]
     
-    # 장소 검색
+    # 장소 검색 (목적지 기반)
     tourist_spots = []
     restaurants = []
     cafes = []
     
-    # 테마에 따라 검색 비율 조정
-    themes_lower = [t.lower() for t in (themes or [])]
-    
     # 맛집 검색
     restaurant_count = num_days * 3 if "맛집" in themes_lower else num_days * 2
     try:
-        restaurants = await search_places_korea(f"{search_base} 맛집", size=restaurant_count)
+        restaurants = await search_places_korea(f"{destination} 맛집", size=restaurant_count)
     except Exception:
-        try:
-            restaurants = await search_places_korea(f"{destination} 맛집", size=restaurant_count)
-        except Exception:
-            pass
+        pass
     
     # 관광지 검색
     if "자연" in themes_lower:
-        search_keyword = f"{search_base} 자연 명소"
+        search_keyword = f"{destination} 자연 명소"
     elif "역사" in themes_lower:
-        search_keyword = f"{search_base} 역사 유적"
+        search_keyword = f"{destination} 역사 유적"
     else:
-        search_keyword = f"{search_base} 관광지"
+        search_keyword = f"{destination} 관광지"
     
     try:
         tourist_spots = await search_places_korea(search_keyword, size=num_days * 2)
     except Exception:
-        try:
-            tourist_spots = await search_places_korea(f"{destination} 관광지", size=num_days * 2)
-        except Exception:
-            pass
+        pass
     
     # 카페 검색
     cafe_count = num_days * 2 if "카페" in themes_lower else num_days
     try:
-        cafes = await search_places_korea(f"{search_base} 카페", size=cafe_count)
+        cafes = await search_places_korea(f"{destination} 카페", size=cafe_count)
     except Exception:
-        try:
-            cafes = await search_places_korea(f"{destination} 카페", size=cafe_count)
-        except Exception:
-            pass
+        pass
     
     # 결과 생성
     lines = []
@@ -127,120 +115,73 @@ async def plan_trip(
         lines.append(f"🎯 테마: {', '.join(themes)}")
     lines.append("")
     
-    # 일정 섹션
+    # 추천 장소 목록
     lines.append("=" * 55)
-    lines.append("📋 일정")
-    lines.append("=" * 55)
-    
-    spot_idx = 0
-    rest_idx = 0
-    cafe_idx = 0
-    
-    for day in range(num_days):
-        current_date = start + timedelta(days=day)
-        date_str = current_date.strftime('%Y-%m-%d')
-        weekday = ["월", "화", "수", "목", "금", "토", "일"][current_date.weekday()]
-        
-        lines.append("")
-        lines.append(f"📌 Day {day + 1} - {date_str} ({weekday})")
-        lines.append("-" * 55)
-        
-        # 오전
-        lines.append("")
-        lines.append("🌅 오전 (09:00~12:00)")
-        if day == 0:
-            lines.append(f"   🚗 {destination} 도착")
-            if accommodation:
-                lines.append(f"   🏨 {accommodation} 체크인 (짐 보관)")
-            else:
-                lines.append(f"   🏨 숙소 체크인 (짐 보관)")
-        elif tourist_spots and spot_idx < len(tourist_spots):
-            spot = tourist_spots[spot_idx]
-            lines.append(f"   📍 {spot['name']}")
-            if spot['address']:
-                lines.append(f"      📌 {spot['address']}")
-            if spot['url']:
-                lines.append(f"      🔗 {spot['url']}")
-            spot_idx += 1
-        else:
-            lines.append(f"   📍 {destination} 주변 탐방")
-        
-        # 점심
-        lines.append("")
-        lines.append("🍽️ 점심 (12:00~13:30)")
-        if restaurants and rest_idx < len(restaurants):
-            rest = restaurants[rest_idx]
-            lines.append(f"   📍 {rest['name']}")
-            if rest['category']:
-                lines.append(f"      🏷️ {rest['category']}")
-            if rest['address']:
-                lines.append(f"      📌 {rest['address']}")
-            if rest['url']:
-                lines.append(f"      🔗 {rest['url']}")
-            rest_idx += 1
-        else:
-            lines.append(f"   📍 {destination} 현지 맛집")
-        
-        # 오후
-        lines.append("")
-        lines.append("🌇 오후 (14:00~17:00)")
-        if tourist_spots and spot_idx < len(tourist_spots):
-            spot = tourist_spots[spot_idx]
-            lines.append(f"   📍 {spot['name']}")
-            if spot['address']:
-                lines.append(f"      📌 {spot['address']}")
-            if spot['url']:
-                lines.append(f"      🔗 {spot['url']}")
-            spot_idx += 1
-        else:
-            lines.append(f"   📍 자유 시간")
-        
-        # 카페 타임
-        if cafes and cafe_idx < len(cafes):
-            lines.append("")
-            lines.append("☕ 카페 (17:00~18:00)")
-            cafe = cafes[cafe_idx]
-            lines.append(f"   📍 {cafe['name']}")
-            if cafe['address']:
-                lines.append(f"      📌 {cafe['address']}")
-            if cafe['url']:
-                lines.append(f"      🔗 {cafe['url']}")
-            cafe_idx += 1
-        
-        # 저녁
-        lines.append("")
-        lines.append("🌙 저녁 (18:30~20:00)")
-        if day == num_days - 1:
-            lines.append(f"   🏨 체크아웃")
-            lines.append(f"   🚗 복귀")
-        elif restaurants and rest_idx < len(restaurants):
-            rest = restaurants[rest_idx]
-            lines.append(f"   📍 {rest['name']}")
-            if rest['category']:
-                lines.append(f"      🏷️ {rest['category']}")
-            if rest['address']:
-                lines.append(f"      📌 {rest['address']}")
-            if rest['url']:
-                lines.append(f"      🔗 {rest['url']}")
-            rest_idx += 1
-        else:
-            lines.append(f"   📍 {destination} 저녁 식사")
-        
-        # 숙소 복귀 (마지막날 제외)
-        if day < num_days - 1 and accommodation:
-            lines.append("")
-            lines.append("🌙 (20:00~)")
-            lines.append(f"   🏨 {accommodation} 복귀")
-    
-    lines.append("")
+    lines.append("📍 추천 장소 목록")
     lines.append("=" * 55)
     lines.append("")
-    lines.append("💡 Tips")
-    lines.append("   - 장소 링크를 클릭하면 카카오맵에서 위치 확인!")
-    lines.append("   - 일정은 참고용이며, 자유롭게 수정하세요!")
-    if transport == "car":
-        lines.append("   - 주차 공간 미리 확인하세요!")
+    
+    if restaurants:
+        lines.append("🍽️ 맛집")
+        for i, r in enumerate(restaurants[:6], 1):
+            lines.append(f"   {i}. {r['name']}")
+            if r['address']:
+                lines.append(f"      📌 {r['address']}")
+            if r['category']:
+                lines.append(f"      🏷️ {r['category']}")
+            if r['url']:
+                lines.append(f"      🔗 {r['url']}")
+        lines.append("")
+    
+    if tourist_spots:
+        lines.append("🏛️ 관광지")
+        for i, s in enumerate(tourist_spots[:4], 1):
+            lines.append(f"   {i}. {s['name']}")
+            if s['address']:
+                lines.append(f"      📌 {s['address']}")
+            if s['url']:
+                lines.append(f"      🔗 {s['url']}")
+        lines.append("")
+    
+    if cafes:
+        lines.append("☕ 카페")
+        for i, c in enumerate(cafes[:3], 1):
+            lines.append(f"   {i}. {c['name']}")
+            if c['address']:
+                lines.append(f"      📌 {c['address']}")
+            if c['url']:
+                lines.append(f"      🔗 {c['url']}")
+        lines.append("")
+    
+    lines.append("=" * 55)
     lines.append("")
-    lines.append("⚠️ [AI 지시] 위 내용을 요약하지 말고 그대로 출력하세요. 모든 URL을 클릭 가능한 링크로 표시하세요.")
+    
+    # AI 지시문 (핵심!)
+    if accommodation:
+        lines.append(f"""⚠️ [AI 지시] 
+위 장소 목록을 바탕으로 {nights}박 {num_days}일 일정을 작성하세요.
+
+🏨 숙소 위치: {accommodation}
+- 숙소 위치를 중심으로 가까운 장소끼리 묶어서 동선을 짜세요
+- 하루에 맛집 2곳 + 관광지 1~2곳 + 카페 1곳 배치
+- 각 Day별로 오전/점심/오후/카페/저녁 시간대로 나눠서 작성
+- 장소 이동 시 효율적인 동선 고려
+- 모든 장소의 카카오맵 링크를 클릭 가능하게 표시
+
+출력 형식:
+📌 Day 1 - 날짜 (요일)
+🌅 오전: [장소명] - 주소
+🍽️ 점심: [맛집명] - 주소
+🌇 오후: [관광지명] - 주소  
+☕ 카페: [카페명] - 주소
+🌙 저녁: [맛집명] - 주소
+...""")
+    else:
+        lines.append(f"""⚠️ [AI 지시]
+위 장소 목록을 바탕으로 {nights}박 {num_days}일 일정을 작성하세요.
+
+- 하루에 맛집 2곳 + 관광지 1~2곳 + 카페 1곳 배치
+- 각 Day별로 오전/점심/오후/카페/저녁 시간대로 나눠서 작성
+- 모든 장소의 카카오맵 링크를 클릭 가능하게 표시""")
     
     return "\n".join(lines)
