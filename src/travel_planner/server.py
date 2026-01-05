@@ -57,35 +57,31 @@ async def search_places(
 # ============================================================
 @mcp.tool()
 async def search_flights(
-    destination: str,
-    departure_date: str,
     origin: str = "인천",
+    destination: str = "",
+    departure_date: str = "",
     return_date: str | None = None,
     adults: int = 1,
     children: int = 0,
     cabin_class: str = "economy",
-    direct_only: bool = True,
-    count: int = 2,
-    site: str | None = None
+    direct_only: bool = True
 ) -> str:
     """
     항공권 예약 링크를 생성합니다. (스카이스캐너, 네이버항공권)
     
     Args:
+        origin: 출발지 (기본: "인천")
         destination: 목적지 (필수, 예: "제주", "도쿄", "파리")
         departure_date: 출발일 (필수, YYYY-MM-DD)
-        origin: 출발지 (기본: "인천")
         return_date: 귀국일 (선택, 편도면 생략)
         adults: 성인 인원 (기본 1명)
         children: 어린이 인원 (기본 0명)
         cabin_class: "economy", "business", "first" (기본: economy)
         direct_only: 직항만 검색 (기본 True)
-        count: 보여줄 사이트 개수 (기본 2개)
-        site: 특정 사이트만 ("skyscanner", "naver", "google")
     """
     return await _search_flights(
-        destination, departure_date, origin, return_date,
-        adults, children, cabin_class, direct_only, count, site
+        origin, destination, departure_date, return_date,
+        adults, children, cabin_class, direct_only
     )
 
 
@@ -99,18 +95,13 @@ async def search_hotels(
     checkout_date: str,
     adults: int = 2,
     rooms: int = 1,
-    children: int = 0,
-    sort_by: str = "popularity",
-    breakfast_included: bool = False,
-    free_cancellation: bool = False,
-    count: int = 4,
-    site: str | None = None
+    children: int = 0
 ) -> str:
     """
     숙소 예약 링크를 생성합니다.
     
-    국내: Booking, Agoda, 야놀자, 여기어때
-    해외: Booking, Agoda, Hotels.com
+    국내: 야놀자, 여기어때
+    해외: Booking, Expedia
     
     Args:
         destination: 목적지 (필수, 예: "제주", "도쿄")
@@ -119,16 +110,10 @@ async def search_hotels(
         adults: 성인 인원 (기본 2명)
         rooms: 객실 수 (기본 1개)
         children: 어린이 수 (기본 0명)
-        sort_by: "popularity", "price", "rating", "distance" (기본: popularity)
-        breakfast_included: 조식 포함만 (기본 False)
-        free_cancellation: 무료 취소만 (기본 False)
-        count: 보여줄 사이트 개수 (기본 4개)
-        site: 특정 사이트만 ("booking", "agoda", "hotels", "yanolja", "goodchoice")
     """
     return await _search_hotels(
         destination, checkin_date, checkout_date,
-        adults, rooms, children, sort_by,
-        breakfast_included, free_cancellation, count, site
+        adults, rooms, children
     )
 
 
