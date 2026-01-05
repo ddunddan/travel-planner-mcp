@@ -118,36 +118,34 @@ async def search_hotels(
 
 
 # ============================================================
-# Tool 4: 여행 일정 생성 (종합)
+# Tool 4: 여행 일정 생성 (숙소 기반 동선)
 # ============================================================
 @mcp.tool()
 async def plan_trip(
     destination: str,
     start_date: str,
     end_date: str,
-    origin: str = "인천",
-    adults: int = 2,
-    children: int = 0,
-    transport: str = "public",
-    themes: list[str] | None = None
+    accommodation: str = "",
+    transport: str = "car",
+    themes: list[str] | None = None,
+    adults: int = 2
 ) -> str:
     """
-    여행 일정을 자동 생성하고 예약 링크를 제공합니다.
+    숙소 위치 기반으로 여행 일정을 생성합니다.
     
-    국내 여행지: 카카오맵 기반 관광지/맛집/카페 추천 + 예약 링크
-    해외 여행지: 예약 링크만 제공
+    숙소 주변 맛집, 관광지, 카페를 검색하여 동선을 짜줍니다.
+    항공권/숙소 예약은 search_flights, search_hotels를 사용하세요.
     
     Args:
-        destination: 여행지 (예: "제주", "부산", "경주", "도쿄")
+        destination: 여행지 (예: "제주", "부산", "강릉")
         start_date: 시작일 (YYYY-MM-DD)
         end_date: 종료일 (YYYY-MM-DD)
-        origin: 출발지 (기본: "인천")
-        adults: 성인 인원 (기본 2명)
-        children: 어린이 인원 (기본 0명)
-        transport: 이동수단 - "car"(자차), "public"(대중교통), "flight"(항공) (기본: public)
-        themes: 여행 테마 리스트 (선택, 예: ["자연", "맛집", "카페"])
+        accommodation: 숙소 이름/위치 (예: "제주 라마다호텔", "해운대 파라다이스호텔")
+        transport: 이동수단 - "car"(자차/렌트카), "public"(대중교통) (기본: car)
+        themes: 여행 테마 (선택, 예: ["맛집", "자연", "카페"])
+        adults: 인원 수 (기본 2명)
     """
-    return await _plan_trip(destination, start_date, end_date, origin, adults, children, transport, themes)
+    return await _plan_trip(destination, start_date, end_date, accommodation, transport, themes, adults)
 
 
 # ============================================================

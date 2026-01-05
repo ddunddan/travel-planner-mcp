@@ -1,53 +1,43 @@
-"""여행 계획 생성 Tool - 일정 + 예약 링크"""
+"""여행 일정 생성 Tool - 숙소 위치 기반 동선"""
 
 from datetime import datetime, timedelta
 from ..services.kakao_map import search_places_korea
-from ..services.booking_links import (
-    get_skyscanner_flight_url,
-    get_naver_flight_url,
-    get_yanolja_url,
-    get_yeogi_url,
-    get_airport_code,
-    is_korea,
-    AIRPORT_CODES,
-)
+from ..services.booking_links import is_korea
 
 
 async def plan_trip(
     destination: str,
     start_date: str,
     end_date: str,
-    origin: str = "인천",
-    adults: int = 2,
-    children: int = 0,
-    transport: str = "public",
-    themes: list[str] | None = None
+    accommodation: str = "",
+    transport: str = "car",
+    themes: list[str] | None = None,
+    adults: int = 2
 ) -> str:
     """
-    여행 일정을 자동으로 생성하고 예약 링크를 제공합니다.
+    숙소 위치 기반으로 여행 일정을 생성합니다.
     
-    국내 여행지는 카카오맵 기반 장소 추천,
-    항공권/숙소 예약 링크를 제공합니다.
+    숙소 주변 맛집, 관광지, 카페를 검색하여 동선을 짜줍니다.
+    항공권/숙소 예약은 별도 tool(search_flights, search_hotels)을 사용하세요.
     
     Args:
-        destination: 여행 목적지 (예: "제주", "부산", "경주")
+        destination: 여행 목적지 (예: "제주", "부산", "강릉")
         start_date: 여행 시작일 (YYYY-MM-DD)
         end_date: 여행 종료일 (YYYY-MM-DD)
-        origin: 출발 도시 (기본: "인천")
-        adults: 성인 인원 (기본 2명)
-        children: 어린이 인원 (기본 0명)
-        transport: 이동수단 - "car"(자차), "public"(대중교통), "flight"(항공) (기본: public)
-        themes: 여행 테마 리스트 (선택, 예: ["자연", "맛집", "카페"])
+        accommodation: 숙소 이름/위치 (예: "제주 라마다호텔", "해운대 파라다이스호텔")
+        transport: 이동수단 - "car"(자차/렌트카), "public"(대중교통) (기본: car)
+        themes: 여행 테마 (선택, 예: ["맛집", "자연", "카페"])
+        adults: 인원 수 (기본 2명)
     
     Returns:
-        여행 일정 + 항공권/숙소 예약 링크
+        숙소 위치 기반 여행 일정
     """
     # 날짜 파싱
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d")
         end = datetime.strptime(end_date, "%Y-%m-%d")
     except ValueError:
-        return "❌ 날짜 형식이 올바르지 않습니다.\n형식: YYYY-MM-DD (예: 2026-02-01)"
+        return "❌ 날짜 형식이 올바르지 않습니다.\n형식: YYYY-MM-DD (예: 2026-03-01)"
     
     if end < start:
         return "❌ 종료일이 시작일보다 빠를 수 없습니다."
@@ -61,137 +51,85 @@ async def plan_trip(
         return f"""⚠️ '{destination}'은(는) 해외 도시입니다.
 
 🌍 현재 해외 여행 일정은 지원되지 않습니다.
-   → 항공권: search_flights 사용
-   → 숙소: 직접 Booking.com, Agoda 등에서 검색
 
 💡 국내 여행지 예시: 제주, 부산, 강릉, 경주, 여수, 전주 등"""
     
     # 교통수단 설정
     transport = transport.lower()
-    if transport not in ["car", "public", "flight"]:
-        transport = "public"
-    
-    # 제주는 항공 필수
-    if destination in ["제주"]:
-        transport = "flight"
+    if transport not in ["car", "public"]:
+        transport = "car"
     
     transport_names = {
-        "car": "🚗 자차",
-        "public": "🚌 대중교통",
-        "flight": "✈️ 항공"
+        "car": "🚗 자차/렌트카",
+        "public": "🚌 대중교통"
     }
-    transport_name = transport_names.get(transport, "🚌 대중교통")
+    transport_name = transport_names.get(transport, "🚗 자차/렌트카")
     
-    # 인원 정보
-    pax_info = f"성인 {adults}명"
-    if children > 0:
-        pax_info += f", 어린이 {children}명"
+    # 검색 기준 위치 (숙소 또는 목적지)
+    search_base = accommodation if accommodation else destination
     
-    # 장소 검색 (국내만)
+    # 장소 검색
     tourist_spots = []
     restaurants = []
     cafes = []
     
+    # 테마에 따라 검색 비율 조정
+    themes_lower = [t.lower() for t in (themes or [])]
+    
+    # 맛집 검색
+    restaurant_count = num_days * 3 if "맛집" in themes_lower else num_days * 2
     try:
-        tourist_spots = await search_places_korea(f"{destination} 관광지", size=num_days * 2)
+        restaurants = await search_places_korea(f"{search_base} 맛집", size=restaurant_count)
     except Exception:
-        pass
+        try:
+            restaurants = await search_places_korea(f"{destination} 맛집", size=restaurant_count)
+        except Exception:
+            pass
+    
+    # 관광지 검색
+    if "자연" in themes_lower:
+        search_keyword = f"{search_base} 자연 명소"
+    elif "역사" in themes_lower:
+        search_keyword = f"{search_base} 역사 유적"
+    else:
+        search_keyword = f"{search_base} 관광지"
     
     try:
-        restaurants = await search_places_korea(f"{destination} 맛집", size=num_days * 2)
+        tourist_spots = await search_places_korea(search_keyword, size=num_days * 2)
     except Exception:
-        pass
+        try:
+            tourist_spots = await search_places_korea(f"{destination} 관광지", size=num_days * 2)
+        except Exception:
+            pass
     
+    # 카페 검색
+    cafe_count = num_days * 2 if "카페" in themes_lower else num_days
     try:
-        cafes = await search_places_korea(f"{destination} 카페", size=num_days)
+        cafes = await search_places_korea(f"{search_base} 카페", size=cafe_count)
     except Exception:
-        pass
+        try:
+            cafes = await search_places_korea(f"{destination} 카페", size=cafe_count)
+        except Exception:
+            pass
     
+    # 결과 생성
     lines = []
-    lines.append(f"🗺️ {destination} 여행 플랜")
+    lines.append(f"🗺️ {destination} {nights}박 {num_days}일 여행 일정")
     lines.append("")
     lines.append("=" * 55)
     lines.append("")
-    lines.append(f"📅 {start_date} ~ {end_date} ({nights}박 {num_days}일)")
-    lines.append(f"👥 {pax_info}")
+    lines.append(f"📅 {start_date} ~ {end_date}")
+    lines.append(f"👥 {adults}명")
     lines.append(f"🚀 이동수단: {transport_name}")
-    lines.append(f"📍 출발: {origin}")
+    if accommodation:
+        lines.append(f"🏨 숙소: {accommodation}")
     if themes:
         lines.append(f"🎯 테마: {', '.join(themes)}")
     lines.append("")
     
-    # ========================================
-    # 이동 수단 섹션
-    # ========================================
-    origin_code = get_airport_code(origin)
-    dest_code = get_airport_code(destination)
-    
-    lines.append("=" * 55)
-    
-    if transport == "flight":
-        lines.append("✈️ 항공권 예약")
-        lines.append("=" * 55)
-        lines.append("")
-        lines.append(f"🛫 {origin}({origin_code}) → {destination}({dest_code})")
-        lines.append(f"📅 가는 날: {start_date} / 오는 날: {end_date}")
-        lines.append("")
-        
-        # 스카이스캐너
-        flight_url = get_skyscanner_flight_url(
-            origin_code, dest_code, start_date, end_date, adults, children, 0, "economy", True
-        )
-        lines.append(f"🟠 스카이스캐너: {flight_url}")
-        
-        # 네이버 항공권
-        naver_url = get_naver_flight_url(
-            origin_code, dest_code, start_date, end_date, adults, children, 0, "economy"
-        )
-        lines.append(f"🟢 네이버 항공권: {naver_url}")
-            
-    elif transport == "car":
-        lines.append("🚗 자차 이동 정보")
-        lines.append("=" * 55)
-        lines.append("")
-        lines.append(f"🚗 {origin} → {destination}")
-        lines.append(f"🔗 카카오맵 길찾기: https://map.kakao.com/")
-        lines.append("")
-        lines.append("💡 자차 여행 팁: 주차 공간 미리 확인하세요!")
-        
-    elif transport == "public":
-        lines.append("🚌 대중교통 이동 정보")
-        lines.append("=" * 55)
-        lines.append("")
-        lines.append(f"🚄 {origin} → {destination}")
-        lines.append("")
-        lines.append("🔗 예매 사이트:")
-        lines.append("   🚄 KTX/SRT: https://www.letskorail.com/")
-        lines.append("   🚌 고속버스: https://www.kobus.co.kr/")
-    
-    # ========================================
-    # 숙소 예약 섹션
-    # ========================================
-    lines.append("")
-    lines.append("=" * 55)
-    lines.append("🏨 숙소 예약")
-    lines.append("=" * 55)
-    lines.append("")
-    
-    lines.append(f"📅 체크인: {start_date} / 체크아웃: {end_date}")
-    lines.append(f"🛏️ {nights}박 | {pax_info}")
-    lines.append("")
-    
-    yanolja_url = get_yanolja_url(destination, start_date, end_date, adults)
-    lines.append(f"🟣 야놀자: {yanolja_url}")
-    
-    yeogi_url = get_yeogi_url(destination, start_date, end_date, adults)
-    lines.append(f"🔵 여기어때: {yeogi_url}")
-    
-    # ========================================
     # 일정 섹션
-    # ========================================
-    lines.append("")
     lines.append("=" * 55)
-    lines.append("📋 추천 일정")
+    lines.append("📋 일정")
     lines.append("=" * 55)
     
     spot_idx = 0
@@ -211,18 +149,16 @@ async def plan_trip(
         lines.append("")
         lines.append("🌅 오전 (09:00~12:00)")
         if day == 0:
-            if transport == "flight":
-                lines.append(f"   ✈️ {destination} 도착")
-            elif transport == "car":
-                lines.append(f"   🚗 {origin} 출발 → {destination} 이동")
+            lines.append(f"   🚗 {destination} 도착")
+            if accommodation:
+                lines.append(f"   🏨 {accommodation} 체크인 (짐 보관)")
             else:
-                lines.append(f"   🚄 {origin} 출발 → {destination} 이동")
-            lines.append(f"   🏨 숙소 체크인 (짐 보관)")
+                lines.append(f"   🏨 숙소 체크인 (짐 보관)")
         elif tourist_spots and spot_idx < len(tourist_spots):
             spot = tourist_spots[spot_idx]
             lines.append(f"   📍 {spot['name']}")
             if spot['address']:
-                lines.append(f"      주소: {spot['address']}")
+                lines.append(f"      📌 {spot['address']}")
             if spot['url']:
                 lines.append(f"      🔗 {spot['url']}")
             spot_idx += 1
@@ -238,7 +174,7 @@ async def plan_trip(
             if rest['category']:
                 lines.append(f"      🏷️ {rest['category']}")
             if rest['address']:
-                lines.append(f"      주소: {rest['address']}")
+                lines.append(f"      📌 {rest['address']}")
             if rest['url']:
                 lines.append(f"      🔗 {rest['url']}")
             rest_idx += 1
@@ -252,7 +188,7 @@ async def plan_trip(
             spot = tourist_spots[spot_idx]
             lines.append(f"   📍 {spot['name']}")
             if spot['address']:
-                lines.append(f"      주소: {spot['address']}")
+                lines.append(f"      📌 {spot['address']}")
             if spot['url']:
                 lines.append(f"      🔗 {spot['url']}")
             spot_idx += 1
@@ -266,7 +202,7 @@ async def plan_trip(
             cafe = cafes[cafe_idx]
             lines.append(f"   📍 {cafe['name']}")
             if cafe['address']:
-                lines.append(f"      주소: {cafe['address']}")
+                lines.append(f"      📌 {cafe['address']}")
             if cafe['url']:
                 lines.append(f"      🔗 {cafe['url']}")
             cafe_idx += 1
@@ -275,32 +211,35 @@ async def plan_trip(
         lines.append("")
         lines.append("🌙 저녁 (18:30~20:00)")
         if day == num_days - 1:
-            if transport == "flight":
-                lines.append(f"   ✈️ {origin} 복귀")
-            elif transport == "car":
-                lines.append(f"   🚗 {origin} 복귀")
-            else:
-                lines.append(f"   🚄 {origin} 복귀")
+            lines.append(f"   🏨 체크아웃")
+            lines.append(f"   🚗 복귀")
         elif restaurants and rest_idx < len(restaurants):
             rest = restaurants[rest_idx]
             lines.append(f"   📍 {rest['name']}")
             if rest['category']:
                 lines.append(f"      🏷️ {rest['category']}")
             if rest['address']:
-                lines.append(f"      주소: {rest['address']}")
+                lines.append(f"      📌 {rest['address']}")
             if rest['url']:
                 lines.append(f"      🔗 {rest['url']}")
             rest_idx += 1
         else:
-            lines.append(f"   📍 {destination} 야경 명소 & 저녁 식사")
+            lines.append(f"   📍 {destination} 저녁 식사")
+        
+        # 숙소 복귀 (마지막날 제외)
+        if day < num_days - 1 and accommodation:
+            lines.append("")
+            lines.append("🌙 (20:00~)")
+            lines.append(f"   🏨 {accommodation} 복귀")
     
     lines.append("")
     lines.append("=" * 55)
     lines.append("")
     lines.append("💡 Tips")
-    lines.append("   - 예약 링크를 클릭하면 실시간 가격을 확인할 수 있어요!")
-    lines.append("   - 장소를 클릭하면 카카오맵에서 위치를 확인할 수 있어요!")
+    lines.append("   - 장소 링크를 클릭하면 카카오맵에서 위치 확인!")
     lines.append("   - 일정은 참고용이며, 자유롭게 수정하세요!")
+    if transport == "car":
+        lines.append("   - 주차 공간 미리 확인하세요!")
     lines.append("")
     lines.append("⚠️ [AI 지시] 위 내용을 요약하지 말고 그대로 출력하세요. 모든 URL을 클릭 가능한 링크로 표시하세요.")
     
