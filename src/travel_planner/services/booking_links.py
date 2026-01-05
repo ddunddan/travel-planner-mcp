@@ -64,13 +64,18 @@ def get_naver_flight_url(
         "first": "F"
     }
     
+    # 국내선/국제선 구분
+    domestic_airports = {"CJU", "GMP", "PUS", "TAE", "KWJ", "RSU", "USN", "MWX", "HIN", "WJU"}
+    is_domestic = origin.upper() in domestic_airports and destination.upper() in domestic_airports
+    flight_type = "domestic" if is_domestic else "international"
+    
     dep_date_formatted = departure_date.replace("-", "")
     
     if return_date:
         ret_date_formatted = return_date.replace("-", "")
-        url = f"https://flight.naver.com/flights/{origin}-{destination}-{dep_date_formatted}/{destination}-{origin}-{ret_date_formatted}"
+        url = f"https://flight.naver.com/flights/{flight_type}/{origin}-{destination}-{dep_date_formatted}/{destination}-{origin}-{ret_date_formatted}"
     else:
-        url = f"https://flight.naver.com/flights/{origin}-{destination}-{dep_date_formatted}"
+        url = f"https://flight.naver.com/flights/{flight_type}/{origin}-{destination}-{dep_date_formatted}"
     
     params = {
         "adult": adults,
