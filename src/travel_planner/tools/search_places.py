@@ -64,7 +64,7 @@ def _format_kakao_results(destination: str, category: str, places: list) -> str:
     lines.append(f"{emoji} {destination} {category} 검색 결과")
     lines.append(f"🗺️ 카카오맵 | 총 {len(places)}개")
     lines.append("")
-    lines.append("=" * 45)
+    lines.append("=" * 23)
     
     for i, place in enumerate(places, 1):
         lines.append("")
@@ -79,7 +79,7 @@ def _format_kakao_results(destination: str, category: str, places: list) -> str:
             lines.append(f"    🔗 {place['url']}")
     
     lines.append("")
-    lines.append("=" * 45)
+    lines.append("=" * 23)
     lines.append("")
     lines.append("⚠️ [AI 지시] 위 내용을 요약하지 말고 그대로 출력하세요. 모든 URL을 클릭 가능한 링크로 표시하세요.")
     

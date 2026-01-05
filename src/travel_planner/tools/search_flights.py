@@ -80,7 +80,7 @@ async def search_flights(
     lines = []
     lines.append("✈️ 항공권 검색")
     lines.append("")
-    lines.append("=" * 50)
+    lines.append("=" * 25)
     lines.append("")
     lines.append(f"🛫 {origin}({origin_code}) → {destination}({dest_code})")
     lines.append(f"📅 가는 날: {departure_date}")
@@ -91,7 +91,7 @@ async def search_flights(
     if direct_only:
         lines.append("✅ 직항 우선")
     lines.append("")
-    lines.append("-" * 50)
+    lines.append("-" * 25)
     lines.append("")
     lines.append("📌 아래 링크를 클릭하여 실시간 가격을 확인하세요!")
     lines.append("")
@@ -114,7 +114,7 @@ async def search_flights(
     lines.append(f"   {naver_url}")
     
     lines.append("")
-    lines.append("=" * 50)
+    lines.append("=" * 25)
     lines.append("")
     lines.append("💡 Tip: 스카이스캐너에서 여러 항공사 가격을 비교해보세요!")
     lines.append("")

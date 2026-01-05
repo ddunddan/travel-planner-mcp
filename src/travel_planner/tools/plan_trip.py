@@ -173,7 +173,7 @@ async def plan_trip(
     lines = []
     lines.append(f"🗺️ {destination} {nights}박 {num_days}일 여행 일정")
     lines.append("")
-    lines.append("=" * 55)
+    lines.append("=" * 28)
     lines.append("")
     lines.append(f"📅 {start_date} ~ {end_date}")
     lines.append(f"👥 {adults}명")
@@ -182,9 +182,9 @@ async def plan_trip(
         lines.append(f"🎯 테마: {', '.join(themes)}")
     lines.append("")
     
-    lines.append("=" * 55)
+    lines.append("=" * 28)
     lines.append("📋 일정 (이동 30분 이내 동선)")
-    lines.append("=" * 55)
+    lines.append("=" * 28)
     
     used_names = set()
     prev_place = None  # 이전 장소 정보
@@ -196,7 +196,7 @@ async def plan_trip(
         
         lines.append("")
         lines.append(f"📌 Day {day + 1} - {date_str} ({weekday})")
-        lines.append("-" * 55)
+        lines.append("-" * 28)
         
         ref_x, ref_y = None, None
         
@@ -386,7 +386,7 @@ async def plan_trip(
                 lines.append(f"   📍 {destination} 저녁 식사")
     
     lines.append("")
-    lines.append("=" * 55)
+    lines.append("=" * 28)
     lines.append("")
     lines.append("💡 Tips")
     lines.append("   - 🔗 장소 링크 → 카카오맵 상세 정보")
