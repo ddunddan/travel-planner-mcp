@@ -1,8 +1,8 @@
-"""여행 일정 생성 Tool - 카카오모빌리티 API 기반 동선 최적화"""
+"""여행 일정 생성 Tool - 직선 거리 기반 동선 최적화"""
 
 from datetime import datetime, timedelta
 from ..services.kakao_map import search_places_korea
-from ..services.kakao_mobility import get_travel_time, get_kakao_directions_url
+from ..services.kakao_mobility import get_kakao_directions_url
 from ..services.booking_links import is_korea
 
 
@@ -55,20 +55,14 @@ async def find_nearby_place(
     if not top_candidates:
         return (None, None)
     
-    # 2단계: 상위 5개에 대해서만 API 호출
+    # 2단계: 직선 거리 기반 이동 시간 추정 (시속 30km 가정)
+    # 카카오모빌리티 API는 안정성을 위해 비활성화
     best = None
     best_time = float('inf')
     
     for place, distance in top_candidates:
-        x = float(place['x'])
-        y = float(place['y'])
-        
-        # 카카오모빌리티 API로 실제 이동 시간 계산
-        travel_time = await get_travel_time(ref_x, ref_y, x, y)
-        
-        # API 실패 시 직선 거리로 추정 (시속 40km 가정)
-        if travel_time is None:
-            travel_time = int((distance / 40) * 60)
+        # 직선 거리 → 실제 도로 거리 보정 (1.3배) + 시속 30km
+        travel_time = int((distance * 1.3 / 30) * 60)
         
         if travel_time <= max_time and travel_time < best_time:
             best = place
@@ -78,7 +72,7 @@ async def find_nearby_place(
     if best is None and top_candidates:
         best = top_candidates[0][0]
         distance = top_candidates[0][1]
-        best_time = int((distance / 40) * 60)
+        best_time = int((distance * 1.3 / 30) * 60)
     
     return (best, int(best_time) if best else None)
 
