@@ -56,8 +56,6 @@ def get_naver_flight_url(
     cabin_class: str = "economy"
 ) -> str:
     """네이버 항공권 검색 URL 생성"""
-    trip_type = "RT" if return_date else "OW"
-    
     # 좌석 등급 매핑
     cabin_map = {
         "economy": "Y",
@@ -66,7 +64,6 @@ def get_naver_flight_url(
         "first": "F"
     }
     
-    # 네이버 항공권 새 URL 형식
     dep_date_formatted = departure_date.replace("-", "")
     
     if return_date:
@@ -111,21 +108,65 @@ def get_google_flights_url(
 
 
 # ============================================================
-# 호텔 예약 링크 생성 (작동 확인된 것만)
+# 호텔 예약 링크 생성
 # ============================================================
+
+def get_booking_url(
+    destination: str,
+    checkin_date: str,
+    checkout_date: str,
+    adults: int = 2,
+    rooms: int = 1,
+    children: int = 0
+) -> str:
+    """Booking.com 호텔 검색 URL 생성"""
+    params = {
+        "ss": destination,
+        "checkin": checkin_date,
+        "checkout": checkout_date,
+        "group_adults": adults,
+        "no_rooms": rooms,
+        "group_children": children,
+    }
+    
+    return f"https://www.booking.com/searchresults.ko.html?{urlencode(params)}"
+
+
+def get_agoda_url(
+    destination: str,
+    checkin_date: str,
+    checkout_date: str,
+    adults: int = 2,
+    rooms: int = 1,
+    children: int = 0
+) -> str:
+    """Agoda 호텔 검색 URL 생성"""
+    los = (datetime.strptime(checkout_date, "%Y-%m-%d") - datetime.strptime(checkin_date, "%Y-%m-%d")).days
+    
+    params = {
+        "locale": "ko-kr",
+        "checkIn": checkin_date,
+        "checkOut": checkout_date,
+        "rooms": rooms,
+        "adults": adults,
+        "children": children,
+        "priceCur": "KRW",
+        "los": los,
+        "textToSearch": destination,
+    }
+    
+    return f"https://www.agoda.com/ko-kr/search?{urlencode(params)}"
+
 
 def get_yanolja_url(
     destination: str,
     checkin_date: str,
     checkout_date: str,
-    adults: int = 2,
-    sort_by: str = "popularity"
+    adults: int = 2
 ) -> str:
-    """야놀자 숙박 검색 URL 생성 (국내 전용) - 작동 확인됨"""
-    # 야놀자는 검색어 기반 URL
+    """야놀자 숙박 검색 URL 생성 (국내 전용)"""
     keyword = quote(destination)
     
-    # 날짜 형식: YYYY-MM-DD
     params = {
         "checkin": checkin_date,
         "checkout": checkout_date,
@@ -133,6 +174,23 @@ def get_yanolja_url(
     }
     
     return f"https://www.yanolja.com/search/{keyword}?{urlencode(params)}"
+
+
+def get_yeogi_url(
+    destination: str,
+    checkin_date: str,
+    checkout_date: str,
+    adults: int = 2
+) -> str:
+    """여기어때 숙박 검색 URL 생성 (국내 전용)"""
+    params = {
+        "keyword": destination,
+        "checkIn": checkin_date,
+        "checkOut": checkout_date,
+        "personal": adults,
+    }
+    
+    return f"https://www.yeogi.com/domestic-accommodations?{urlencode(params)}"
 
 
 # ============================================================

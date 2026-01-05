@@ -5,7 +5,10 @@ from ..services.kakao_map import search_places_korea
 from ..services.booking_links import (
     get_skyscanner_flight_url,
     get_naver_flight_url,
+    get_booking_url,
+    get_agoda_url,
     get_yanolja_url,
+    get_yeogi_url,
     get_airport_code,
     is_korea,
     AIRPORT_CODES,
@@ -152,8 +155,7 @@ async def plan_trip(
         lines.append("=" * 55)
         lines.append("")
         lines.append(f"🚗 {origin} → {destination}")
-        lines.append(f"🔗 네이버 길찾기: https://map.naver.com/")
-        lines.append(f"🔗 카카오맵: https://map.kakao.com/")
+        lines.append(f"🔗 카카오맵 길찾기: https://map.kakao.com/")
         lines.append("")
         lines.append("💡 자차 여행 팁: 주차 공간 미리 확인하세요!")
         
@@ -182,6 +184,15 @@ async def plan_trip(
     
     yanolja_url = get_yanolja_url(destination, start_date, end_date, adults)
     lines.append(f"🟣 야놀자: {yanolja_url}")
+    
+    yeogi_url = get_yeogi_url(destination, start_date, end_date, adults)
+    lines.append(f"🔵 여기어때: {yeogi_url}")
+    
+    booking_url = get_booking_url(destination, start_date, end_date, adults, 1, children)
+    lines.append(f"🟠 Booking: {booking_url}")
+    
+    agoda_url = get_agoda_url(destination, start_date, end_date, adults, 1, children)
+    lines.append(f"🔴 Agoda: {agoda_url}")
     
     # ========================================
     # 일정 섹션
