@@ -168,9 +168,9 @@ if __name__ == "__main__":
         mode = sys.argv[1]
     
     if mode == "sse" or mode == "http":
-        print("🚀 Starting MCP Server in SSE mode...")
-        print("   URL: http://0.0.0.0:8000/sse")
-        mcp.run(transport="sse")
+        print("🚀 Starting MCP Server in Streamable HTTP mode...")
+        print("   URL: http://0.0.0.0:8000/mcp")
+        mcp.run(transport="streamable-http")
     else:
         print("🚀 Starting MCP Server in stdio mode...")
         mcp.run()
