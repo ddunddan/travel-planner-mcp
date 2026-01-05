@@ -132,7 +132,7 @@ def get_booking_url(
     return f"https://www.booking.com/searchresults.ko.html?{urlencode(params)}"
 
 
-def get_agoda_url(
+def get_expedia_url(
     destination: str,
     checkin_date: str,
     checkout_date: str,
@@ -140,22 +140,16 @@ def get_agoda_url(
     rooms: int = 1,
     children: int = 0
 ) -> str:
-    """Agoda 호텔 검색 URL 생성"""
-    los = (datetime.strptime(checkout_date, "%Y-%m-%d") - datetime.strptime(checkin_date, "%Y-%m-%d")).days
-    
+    """Expedia 호텔 검색 URL 생성"""
     params = {
-        "locale": "ko-kr",
-        "checkIn": checkin_date,
-        "checkOut": checkout_date,
-        "rooms": rooms,
+        "destination": destination,
+        "startDate": checkin_date,
+        "endDate": checkout_date,
         "adults": adults,
-        "children": children,
-        "priceCur": "KRW",
-        "los": los,
-        "textToSearch": destination,
+        "rooms": rooms,
     }
     
-    return f"https://www.agoda.com/ko-kr/search?{urlencode(params)}"
+    return f"https://www.expedia.co.kr/Hotel-Search?{urlencode(params)}"
 
 
 def get_yanolja_url(

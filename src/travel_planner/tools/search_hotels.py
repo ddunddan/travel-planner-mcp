@@ -2,7 +2,7 @@
 
 from ..services.booking_links import (
     get_booking_url,
-    get_agoda_url,
+    get_expedia_url,
     get_yanolja_url,
     get_yeogi_url,
     is_korea,
@@ -20,8 +20,8 @@ async def search_hotels(
     """
     숙소 예약 링크를 생성합니다.
     
-    - 국내: 야놀자, 여기어때, Booking, Agoda
-    - 해외: Booking, Agoda
+    - 국내: 야놀자, 여기어때
+    - 해외: Booking, Expedia
     
     Args:
         destination: 목적지 (필수, 예: "제주", "강릉", "도쿄")
@@ -74,29 +74,26 @@ async def search_hotels(
     lines.append("📌 아래 링크를 클릭하여 실시간 가격을 확인하세요!")
     lines.append("")
     
-    # 국내 전용 사이트
     if is_domestic:
-        # 야놀자
+        # 국내: 야놀자, 여기어때
         yanolja_url = get_yanolja_url(destination, checkin_date, checkout_date, adults)
         lines.append("🟣 야놀자")
         lines.append(f"   {yanolja_url}")
         lines.append("")
         
-        # 여기어때
         yeogi_url = get_yeogi_url(destination, checkin_date, checkout_date, adults)
         lines.append("🔵 여기어때")
         lines.append(f"   {yeogi_url}")
+    else:
+        # 해외: Booking, Expedia
+        booking_url = get_booking_url(destination, checkin_date, checkout_date, adults, rooms, children)
+        lines.append("🟠 Booking.com")
+        lines.append(f"   {booking_url}")
         lines.append("")
-    
-    # 글로벌 사이트
-    booking_url = get_booking_url(destination, checkin_date, checkout_date, adults, rooms, children)
-    lines.append("🟠 Booking.com")
-    lines.append(f"   {booking_url}")
-    lines.append("")
-    
-    agoda_url = get_agoda_url(destination, checkin_date, checkout_date, adults, rooms, children)
-    lines.append("🔴 Agoda")
-    lines.append(f"   {agoda_url}")
+        
+        expedia_url = get_expedia_url(destination, checkin_date, checkout_date, adults, rooms, children)
+        lines.append("🔴 Expedia")
+        lines.append(f"   {expedia_url}")
     
     lines.append("")
     lines.append("=" * 50)

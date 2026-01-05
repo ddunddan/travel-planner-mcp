@@ -5,8 +5,6 @@ from ..services.kakao_map import search_places_korea
 from ..services.booking_links import (
     get_skyscanner_flight_url,
     get_naver_flight_url,
-    get_booking_url,
-    get_agoda_url,
     get_yanolja_url,
     get_yeogi_url,
     get_airport_code,
@@ -187,12 +185,6 @@ async def plan_trip(
     
     yeogi_url = get_yeogi_url(destination, start_date, end_date, adults)
     lines.append(f"🔵 여기어때: {yeogi_url}")
-    
-    booking_url = get_booking_url(destination, start_date, end_date, adults, 1, children)
-    lines.append(f"🟠 Booking: {booking_url}")
-    
-    agoda_url = get_agoda_url(destination, start_date, end_date, adults, 1, children)
-    lines.append(f"🔴 Agoda: {agoda_url}")
     
     # ========================================
     # 일정 섹션
