@@ -19,20 +19,7 @@ def get_skyscanner_flight_url(
     cabin_class: str = "economy",
     direct_only: bool = False
 ) -> str:
-    """
-    스카이스캐너 항공권 검색 URL 생성
-    
-    Args:
-        origin: 출발 공항 IATA 코드
-        destination: 도착 공항 IATA 코드
-        departure_date: 출발일 YYYY-MM-DD
-        return_date: 귀국일 (편도면 None)
-        adults: 성인 인원
-        children: 어린이 인원 (2-11세)
-        infants: 유아 인원 (0-2세)
-        cabin_class: 좌석 등급 (economy, premiumeconomy, business, first)
-        direct_only: 직항만 검색
-    """
+    """스카이스캐너 항공권 검색 URL 생성"""
     # 날짜 형식 변환: YYYY-MM-DD -> YYMMDD
     dep_date = departure_date.replace("-", "")[2:]
     
@@ -79,21 +66,23 @@ def get_naver_flight_url(
         "first": "F"
     }
     
+    # 네이버 항공권 새 URL 형식
+    dep_date_formatted = departure_date.replace("-", "")
+    
+    if return_date:
+        ret_date_formatted = return_date.replace("-", "")
+        url = f"https://flight.naver.com/flights/{origin}-{destination}-{dep_date_formatted}/{destination}-{origin}-{ret_date_formatted}"
+    else:
+        url = f"https://flight.naver.com/flights/{origin}-{destination}-{dep_date_formatted}"
+    
     params = {
-        "trip": trip_type,
-        "scity1": origin,
-        "ecity1": destination,
-        "sdate1": departure_date,
         "adult": adults,
         "child": children,
         "infant": infants,
-        "cabin": cabin_map.get(cabin_class, "Y"),
+        "fareType": cabin_map.get(cabin_class, "Y"),
     }
     
-    if return_date:
-        params["sdate2"] = return_date
-    
-    return f"https://flight.naver.com/flights/international/{origin}-{destination}-{departure_date.replace('-', '')}?{urlencode(params)}"
+    return f"{url}?{urlencode(params)}"
 
 
 def get_google_flights_url(
@@ -106,14 +95,6 @@ def get_google_flights_url(
     direct_only: bool = False
 ) -> str:
     """구글 플라이트 검색 URL 생성"""
-    # 좌석 등급 매핑
-    cabin_map = {
-        "economy": "1",
-        "premiumeconomy": "2", 
-        "business": "3",
-        "first": "4"
-    }
-    
     base_url = "https://www.google.com/travel/flights"
     
     params = {
@@ -121,7 +102,6 @@ def get_google_flights_url(
         "curr": "KRW",
     }
     
-    # 구글 플라이트 URL 형식
     if return_date:
         flight_path = f"/search?q=flights+from+{origin}+to+{destination}+on+{departure_date}+return+{return_date}"
     else:
@@ -131,133 +111,8 @@ def get_google_flights_url(
 
 
 # ============================================================
-# 호텔 예약 링크 생성
+# 호텔 예약 링크 생성 (작동 확인된 것만)
 # ============================================================
-
-def get_booking_url(
-    destination: str,
-    checkin_date: str,
-    checkout_date: str,
-    adults: int = 2,
-    rooms: int = 1,
-    children: int = 0,
-    sort_by: str = "popularity",
-    min_rating: int | None = None,
-    breakfast_included: bool = False,
-    free_cancellation: bool = False
-) -> str:
-    """
-    Booking.com 호텔 검색 URL 생성
-    
-    Args:
-        destination: 목적지
-        checkin_date: 체크인 YYYY-MM-DD
-        checkout_date: 체크아웃 YYYY-MM-DD
-        adults: 성인 인원
-        rooms: 객실 수
-        children: 어린이 수
-        sort_by: 정렬 (popularity, price, review_score, distance)
-        min_rating: 최소 평점 (6, 7, 8, 9)
-        breakfast_included: 조식 포함
-        free_cancellation: 무료 취소 가능
-    """
-    params = {
-        "ss": destination,
-        "checkin": checkin_date,
-        "checkout": checkout_date,
-        "group_adults": adults,
-        "no_rooms": rooms,
-        "group_children": children,
-    }
-    
-    # 정렬
-    sort_map = {
-        "popularity": "popularity",
-        "price": "price",
-        "rating": "bayesian_review_score",
-        "distance": "distance",
-    }
-    if sort_by in sort_map:
-        params["order"] = sort_map[sort_by]
-    
-    # 필터
-    filters = []
-    if min_rating:
-        filters.append(f"review_score={min_rating}0")
-    if breakfast_included:
-        filters.append("mealplan=1")
-    if free_cancellation:
-        filters.append("fc=2")
-    
-    if filters:
-        params["nflt"] = ";".join(filters)
-    
-    return f"https://www.booking.com/searchresults.ko.html?{urlencode(params)}"
-
-
-def get_agoda_url(
-    destination: str,
-    checkin_date: str,
-    checkout_date: str,
-    adults: int = 2,
-    rooms: int = 1,
-    children: int = 0,
-    sort_by: str = "popularity"
-) -> str:
-    """Agoda 호텔 검색 URL 생성"""
-    params = {
-        "textToSearch": destination,
-        "checkIn": checkin_date,
-        "checkOut": checkout_date,
-        "rooms": rooms,
-        "adults": adults,
-        "children": children,
-    }
-    
-    # 정렬
-    sort_map = {
-        "popularity": "1",
-        "price": "2",
-        "rating": "5",
-        "distance": "4",
-    }
-    if sort_by in sort_map:
-        params["sort"] = sort_map[sort_by]
-    
-    return f"https://www.agoda.com/search?{urlencode(params)}"
-
-
-def get_hotels_com_url(
-    destination: str,
-    checkin_date: str,
-    checkout_date: str,
-    adults: int = 2,
-    rooms: int = 1,
-    children: int = 0,
-    sort_by: str = "popularity"
-) -> str:
-    """Hotels.com 호텔 검색 URL 생성"""
-    params = {
-        "q-destination": destination,
-        "q-check-in": checkin_date,
-        "q-check-out": checkout_date,
-        "q-rooms": rooms,
-        "q-room-0-adults": adults,
-        "q-room-0-children": children,
-    }
-    
-    # 정렬
-    sort_map = {
-        "popularity": "RECOMMENDED",
-        "price": "PRICE_LOW_TO_HIGH",
-        "rating": "GUEST_RATING",
-        "distance": "DISTANCE",
-    }
-    if sort_by in sort_map:
-        params["sort-order"] = sort_map[sort_by]
-    
-    return f"https://kr.hotels.com/search.do?{urlencode(params)}"
-
 
 def get_yanolja_url(
     destination: str,
@@ -266,79 +121,18 @@ def get_yanolja_url(
     adults: int = 2,
     sort_by: str = "popularity"
 ) -> str:
-    """야놀자 숙박 검색 URL 생성 (국내 전용)"""
+    """야놀자 숙박 검색 URL 생성 (국내 전용) - 작동 확인됨"""
+    # 야놀자는 검색어 기반 URL
     keyword = quote(destination)
     
+    # 날짜 형식: YYYY-MM-DD
     params = {
-        "keyword": keyword,
-        "checkinDate": checkin_date,
-        "checkoutDate": checkout_date,
-        "adultPax": adults,
-    }
-    
-    # 정렬
-    sort_map = {
-        "popularity": "RECOMMEND",
-        "price": "PRICE_ASC",
-        "rating": "REVIEW_DESC",
-    }
-    if sort_by in sort_map:
-        params["sortType"] = sort_map[sort_by]
-    
-    return f"https://www.yanolja.com/search/{keyword}?{urlencode(params)}"
-
-
-def get_goodchoice_url(
-    destination: str,
-    checkin_date: str,
-    checkout_date: str,
-    adults: int = 2,
-    sort_by: str = "popularity"
-) -> str:
-    """여기어때 숙박 검색 URL 생성 (국내 전용)"""
-    keyword = quote(destination)
-    checkin = checkin_date.replace("-", "")
-    checkout = checkout_date.replace("-", "")
-    
-    params = {
-        "keyword": keyword,
-        "sel_date": checkin,
-        "sel_date2": checkout,
-    }
-    
-    # 정렬
-    sort_map = {
-        "popularity": "1",
-        "price": "2",
-        "rating": "3",
-    }
-    if sort_by in sort_map:
-        params["order"] = sort_map[sort_by]
-    
-    return f"https://www.goodchoice.kr/product/search?{urlencode(params)}"
-
-
-def get_naver_hotel_url(
-    destination: str,
-    checkin_date: str,
-    checkout_date: str,
-    adults: int = 2,
-    rooms: int = 1,
-    children: int = 0
-) -> str:
-    """네이버 호텔 검색 URL 생성"""
-    keyword = quote(destination)
-    
-    params = {
-        "destination": keyword,
         "checkin": checkin_date,
         "checkout": checkout_date,
-        "rooms": rooms,
-        "adults": adults,
-        "children": children,
+        "personal": adults,
     }
     
-    return f"https://hotels.naver.com/search?{urlencode(params)}"
+    return f"https://www.yanolja.com/search/{keyword}?{urlencode(params)}"
 
 
 # ============================================================
