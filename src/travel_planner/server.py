@@ -12,13 +12,12 @@ from .tools.search_places import search_places as _search_places
 from .tools.search_flights import search_flights as _search_flights
 from .tools.search_hotels import search_hotels as _search_hotels
 from .tools.plan_trip import plan_trip as _plan_trip
-from .tools.send_kakao import send_to_kakao as _send_to_kakao
 
 
 # FastMCP 서버 인스턴스 생성
 mcp = FastMCP(
     name="travel-planner",
-    instructions="여행 계획을 도와주는 MCP 서버입니다. 국내 장소 검색(카카오맵), 국내외 항공권/숙소 예약 링크 생성, 카카오톡 메시지 전송 기능을 제공합니다.",
+    instructions="여행 계획을 도와주는 MCP 서버입니다. 국내 장소 검색(카카오맵), 국내외 항공권/숙소 예약 링크 생성 기능을 제공합니다.",
     host="0.0.0.0",
     port=8000,
 )
@@ -157,28 +156,6 @@ async def plan_trip(
         themes: 여행 테마 리스트 (선택, 예: ["자연", "맛집", "카페"])
     """
     return await _plan_trip(destination, start_date, end_date, origin, adults, children, transport, themes)
-
-
-# ============================================================
-# Tool 5: 카카오톡 나에게 보내기
-# ============================================================
-@mcp.tool()
-async def send_to_kakao(
-    message: str,
-    title: str = "🗺️ 여행 플래너",
-    access_token: str | None = None
-) -> str:
-    """
-    여행 일정을 카카오톡 '나에게 보내기'로 전송합니다.
-    
-    ⚠️ 카카오 로그인 Access Token이 필요합니다.
-    
-    Args:
-        message: 전송할 메시지 내용 (여행 일정 등)
-        title: 메시지 제목 (기본: "🗺️ 여행 플래너")
-        access_token: 카카오 로그인 Access Token (환경변수 KAKAO_ACCESS_TOKEN으로도 설정 가능)
-    """
-    return await _send_to_kakao(message, title, access_token)
 
 
 # ============================================================
