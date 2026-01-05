@@ -17,7 +17,14 @@ from .tools.plan_trip import plan_trip as _plan_trip
 # FastMCP 서버 인스턴스 생성
 mcp = FastMCP(
     name="travel-planner",
-    instructions="여행 계획을 도와주는 MCP 서버입니다. 국내 장소 검색(카카오맵), 국내외 항공권/숙소 예약 링크 생성 기능을 제공합니다.",
+    instructions="""여행 계획을 도와주는 MCP 서버입니다.
+
+[중요] Tool 결과 출력 규칙:
+- Tool 결과를 요약하지 마세요
+- 모든 URL을 클릭 가능한 마크다운 링크로 표시하세요
+- 일정, 장소, 예약 링크 등 모든 정보를 그대로 출력하세요
+
+기능: 국내 장소 검색(카카오맵), 국내외 항공권/숙소 예약 링크 생성""",
     host="0.0.0.0",
     port=8000,
 )
