@@ -6,6 +6,17 @@ from ..services.kakao_mobility import get_travel_time, get_kakao_directions_url
 from ..services.booking_links import is_korea
 
 
+def calc_distance(ref_x: float, ref_y: float, x: float, y: float) -> float:
+    """직선 거리 계산 (km)"""
+    import math
+    R = 6371
+    lat1, lon1 = math.radians(ref_y), math.radians(ref_x)
+    lat2, lon2 = math.radians(y), math.radians(x)
+    dlat, dlon = lat2 - lat1, lon2 - lon1
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    return R * 2 * math.asin(math.sqrt(a))
+
+
 async def find_nearby_place(
     places: list,
     ref_x: float,
@@ -14,46 +25,60 @@ async def find_nearby_place(
     max_time: int = 30
 ) -> tuple[dict | None, int | None]:
     """
-    기준 좌표에서 가장 가까운 장소 찾기 (실제 이동 시간 기준)
+    기준 좌표에서 가장 가까운 장소 찾기
+    
+    1단계: 직선 거리로 가까운 5개 필터링
+    2단계: 5개에 대해서만 카카오모빌리티 API 호출
     
     Returns:
         (장소, 이동시간) 튜플
     """
-    best = None
-    best_time = float('inf')
-    
+    # 1단계: 직선 거리로 후보 필터링
+    candidates = []
     for place in places:
-        # 중복 체크
         if place['name'] in used_names:
             continue
-        
-        # 좌표 없으면 스킵
         if not place.get('x') or not place.get('y'):
             continue
-        
         try:
             x = float(place['x'])
             y = float(place['y'])
+            distance = calc_distance(ref_x, ref_y, x, y)
+            candidates.append((place, distance))
         except (ValueError, TypeError):
             continue
+    
+    # 거리 기준 정렬 후 상위 5개만
+    candidates.sort(key=lambda c: c[1])
+    top_candidates = candidates[:5]
+    
+    if not top_candidates:
+        return (None, None)
+    
+    # 2단계: 상위 5개에 대해서만 API 호출
+    best = None
+    best_time = float('inf')
+    
+    for place, distance in top_candidates:
+        x = float(place['x'])
+        y = float(place['y'])
         
         # 카카오모빌리티 API로 실제 이동 시간 계산
         travel_time = await get_travel_time(ref_x, ref_y, x, y)
         
         # API 실패 시 직선 거리로 추정 (시속 40km 가정)
         if travel_time is None:
-            import math
-            R = 6371
-            lat1, lon1 = math.radians(ref_y), math.radians(ref_x)
-            lat2, lon2 = math.radians(y), math.radians(x)
-            dlat, dlon = lat2 - lat1, lon2 - lon1
-            a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-            distance = R * 2 * math.asin(math.sqrt(a))
             travel_time = int((distance / 40) * 60)
         
         if travel_time <= max_time and travel_time < best_time:
             best = place
             best_time = travel_time
+    
+    # 30분 이내 장소가 없으면 가장 가까운 장소 선택
+    if best is None and top_candidates:
+        best = top_candidates[0][0]
+        distance = top_candidates[0][1]
+        best_time = int((distance / 40) * 60)
     
     return (best, int(best_time) if best else None)
 
@@ -222,11 +247,12 @@ async def plan_trip(
         lines.append("")
         lines.append("🍽️ 점심 (12:00~13:30)")
         
+        rest = None
+        travel_min = None
         if ref_x and ref_y:
             rest, travel_min = await find_nearby_place(restaurants, ref_x, ref_y, used_names, 30)
-        else:
+        if not rest:
             rest = get_first_place_with_coords(restaurants, used_names)
-            travel_min = None
         
         if rest:
             used_names.add(rest['name'])
@@ -257,11 +283,12 @@ async def plan_trip(
         lines.append("")
         lines.append("🌇 오후 (14:00~17:00)")
         
+        spot = None
+        travel_min = None
         if ref_x and ref_y:
             spot, travel_min = await find_nearby_place(tourist_spots, ref_x, ref_y, used_names, 30)
-        else:
+        if not spot:
             spot = get_first_place_with_coords(tourist_spots, used_names)
-            travel_min = None
         
         if spot:
             used_names.add(spot['name'])
@@ -290,11 +317,12 @@ async def plan_trip(
         lines.append("")
         lines.append("☕ 카페 (17:00~18:00)")
         
+        cafe = None
+        travel_min = None
         if ref_x and ref_y:
             cafe, travel_min = await find_nearby_place(cafes, ref_x, ref_y, used_names, 30)
-        else:
+        if not cafe:
             cafe = get_first_place_with_coords(cafes, used_names)
-            travel_min = None
         
         if cafe:
             used_names.add(cafe['name'])
@@ -327,11 +355,12 @@ async def plan_trip(
             lines.append(f"   🏨 체크아웃")
             lines.append(f"   🚗 복귀")
         else:
+            rest = None
+            travel_min = None
             if ref_x and ref_y:
                 rest, travel_min = await find_nearby_place(restaurants, ref_x, ref_y, used_names, 30)
-            else:
+            if not rest:
                 rest = get_first_place_with_coords(restaurants, used_names)
-                travel_min = None
             
             if rest:
                 used_names.add(rest['name'])
