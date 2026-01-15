@@ -233,7 +233,7 @@ async def plan_trip(
     # 장소 검색 (테마 가중치 반영)
     # ========================================
     restaurants = []
-    tourist_spots = []
+        tourist_spots = []
     cafes = []
     
     # 맛집 검색 (가중치에 따라 검색량 조절)
@@ -553,8 +553,5 @@ async def plan_trip(
     if themes:
         lines.append(f"   • 테마: {', '.join(themes)}")
     lines.append(f"   • 이동수단: {transport}")
-    
-    lines.append("")
-    lines.append("⚠️ [AI 지시] 위 내용을 요약하지 말고 그대로 출력하세요. 모든 URL을 클릭 가능한 링크로 표시하세요.")
     
     return "\n".join(lines)
