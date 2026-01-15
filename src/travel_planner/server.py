@@ -133,7 +133,7 @@ async def plan_trip(
     """
     여행 일정을 생성합니다. (국내 전용, 최대 2박 3일)
     
-    장소 간 이동 시간 제한 기반으로 동선을 최적화합니다.
+    ⚠️ 이동 시간은 직선거리 기반 추정값입니다. (실제와 다를 수 있음)
     
     Args:
         destination: 여행지 (예: "제주", "부산", "강릉")
@@ -142,7 +142,7 @@ async def plan_trip(
         transport: 이동수단 - "car"(자차/렌트카), "public"(대중교통)
         themes: 여행 테마 (선택, 예: ["맛집", "자연", "카페"])
         adults: 인원 수 (기본 2명)
-        max_travel_time: 장소 간 최대 이동 시간 (분, 기본 50분, 예: 30분 거리로 해줘)
+        max_travel_time: 장소 간 최대 이동 시간 (분, 기본 50분) - 직선거리 기반 추정
     """
     return await _plan_trip(destination, start_date, end_date, transport, themes, adults, max_travel_time)
 

@@ -549,7 +549,7 @@ async def plan_trip(
     lines.append("📝 [적용 조건]")
     lines.append("=" * 14)
     lines.append("")
-    lines.append(f"   • 장소 간 이동 {max_travel_time}분 이내")
+    lines.append(f"   • 이동 제한: {max_travel_time}분 (직선거리 기반 추정)")
     if themes:
         lines.append(f"   • 테마: {', '.join(themes)}")
     lines.append(f"   • 이동수단: {transport}")
