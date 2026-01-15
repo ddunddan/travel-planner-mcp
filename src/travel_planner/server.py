@@ -127,28 +127,24 @@ async def plan_trip(
     end_date: str,
     transport: str = "car",
     themes: list[str] | None = None,
-    adults: int = 2
+    adults: int = 2,
+    max_travel_time: int = 50
 ) -> str:
     """
     여행 일정을 생성합니다. (국내 전용, 최대 2박 3일)
     
-    카카오모빌리티 API로 실제 이동 시간을 계산하여
-    30분 이내의 가까운 장소들로 동선을 최적화합니다.
-    각 장소 간 카카오맵 길찾기 링크를 제공합니다.
-    
-    ⚠️ 최대 2박 3일까지 지원 (더 긴 여행은 나눠서 요청)
-    
-    항공권/숙소 예약은 search_flights, search_hotels를 사용하세요.
+    장소 간 이동 시간 제한 기반으로 동선을 최적화합니다.
     
     Args:
         destination: 여행지 (예: "제주", "부산", "강릉")
         start_date: 시작일 (YYYY-MM-DD)
         end_date: 종료일 (YYYY-MM-DD, 최대 시작일+2일)
-        transport: 이동수단 - "car"(자차/렌트카), "public"(대중교통) (기본: car)
+        transport: 이동수단 - "car"(자차/렌트카), "public"(대중교통)
         themes: 여행 테마 (선택, 예: ["맛집", "자연", "카페"])
         adults: 인원 수 (기본 2명)
+        max_travel_time: 장소 간 최대 이동 시간 (분, 기본 50분, 예: 30분 거리로 해줘)
     """
-    return await _plan_trip(destination, start_date, end_date, transport, themes, adults)
+    return await _plan_trip(destination, start_date, end_date, transport, themes, adults, max_travel_time)
 
 
 # ============================================================

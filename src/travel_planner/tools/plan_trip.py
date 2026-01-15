@@ -11,7 +11,7 @@ from ..services.booking_links import is_korea
 # 설정 상수
 # ============================================================
 MAX_MOVES_PER_DAY = 5  # 하루 최대 이동 횟수
-MAX_TRAVEL_TIME = 30   # 최대 이동 시간 (분)
+DEFAULT_MAX_TRAVEL_TIME = 30   # 기본 최대 이동 시간 (분)
 REST_THRESHOLD = 2     # 연속 이동 후 휴식 삽입 기준
 
 
@@ -101,7 +101,7 @@ async def find_nearby_place(
     ref_y: float,
     used_names: set,
     stats: ScheduleStats,
-    max_time: int = MAX_TRAVEL_TIME,
+    max_time: int = DEFAULT_MAX_TRAVEL_TIME,
     consecutive_moves: int = 0
 ) -> tuple[dict | None, int | None]:
     """
@@ -182,16 +182,11 @@ async def plan_trip(
     end_date: str,
     transport: str = "car",
     themes: list[str] | None = None,
-    adults: int = 2
+    adults: int = 2,
+    max_travel_time: int = 50
 ) -> str:
     """
     여행 일정을 생성합니다. (국내 전용)
-    
-    최적화 기준:
-    - 이동 시간 30분 이내 동선
-    - 하루 최대 5회 이동
-    - 연속 이동 피로도 고려
-    - 테마 기반 장소 비중 조절
     
     Args:
         destination: 여행 목적지 (예: "제주", "부산", "강릉")
@@ -200,6 +195,7 @@ async def plan_trip(
         transport: 이동수단 - "car"(자차/렌트카), "public"(대중교통)
         themes: 여행 테마 (예: ["맛집", "자연", "카페"])
         adults: 인원 수 (기본 2명)
+        max_travel_time: 장소 간 최대 이동 시간 (분, 기본 50분)
     """
     # ========================================
     # 입력 검증
@@ -279,7 +275,7 @@ async def plan_trip(
     # 헤더
     lines.append(f"🗺️ {destination} {nights}박 {num_days}일 여행 일정")
     lines.append("")
-    lines.append("=" * 28)
+    lines.append("=" * 14)
     lines.append("")
     lines.append(f"📅 {start_date} ~ {end_date}")
     lines.append(f"👥 {adults}명")
@@ -289,9 +285,9 @@ async def plan_trip(
     
     # 일정 섹션
     lines.append("")
-    lines.append("=" * 28)
+    lines.append("=" * 14)
     lines.append("📋 일정")
-    lines.append("=" * 28)
+    lines.append("=" * 14)
     
     for day in range(num_days):
         current_date = start + timedelta(days=day)
@@ -300,7 +296,7 @@ async def plan_trip(
         
         lines.append("")
         lines.append(f"📌 Day {day + 1} - {date_str} ({weekday})")
-        lines.append("-" * 28)
+        lines.append("-" * 14)
         
         ref_x, ref_y = None, None
         day_moves = 0
@@ -323,7 +319,7 @@ async def plan_trip(
             if ref_x and ref_y and day_moves < MAX_MOVES_PER_DAY:
                 spot, travel_min = await find_nearby_place(
                     tourist_spots, ref_x, ref_y, used_names, stats,
-                    MAX_TRAVEL_TIME, consecutive_moves
+                    max_travel_time, consecutive_moves
                 )
             if not spot:
                 spot = get_first_place_with_coords(tourist_spots, used_names)
@@ -363,7 +359,7 @@ async def plan_trip(
         if ref_x and ref_y and day_moves < MAX_MOVES_PER_DAY:
             rest, travel_min = await find_nearby_place(
                 restaurants, ref_x, ref_y, used_names, stats,
-                MAX_TRAVEL_TIME, consecutive_moves
+                max_travel_time, consecutive_moves
             )
         if not rest:
             rest = get_first_place_with_coords(restaurants, used_names)
@@ -416,7 +412,7 @@ async def plan_trip(
             if ref_x and ref_y and day_moves < MAX_MOVES_PER_DAY:
                 spot, travel_min = await find_nearby_place(
                     tourist_spots, ref_x, ref_y, used_names, stats,
-                    MAX_TRAVEL_TIME, consecutive_moves
+                    max_travel_time, consecutive_moves
                 )
             if not spot:
                 spot = get_first_place_with_coords(tourist_spots, used_names)
@@ -457,7 +453,7 @@ async def plan_trip(
         if ref_x and ref_y and day_moves < MAX_MOVES_PER_DAY:
             cafe, travel_min = await find_nearby_place(
                 cafes, ref_x, ref_y, used_names, stats,
-                MAX_TRAVEL_TIME, consecutive_moves
+                max_travel_time, consecutive_moves
             )
         if not cafe:
             cafe = get_first_place_with_coords(cafes, used_names)
@@ -502,7 +498,7 @@ async def plan_trip(
             if ref_x and ref_y and day_moves < MAX_MOVES_PER_DAY:
                 rest, travel_min = await find_nearby_place(
                     restaurants, ref_x, ref_y, used_names, stats,
-                    MAX_TRAVEL_TIME, consecutive_moves
+                    max_travel_time, consecutive_moves
                 )
             if not rest:
                 rest = get_first_place_with_coords(restaurants, used_names)
@@ -536,64 +532,27 @@ async def plan_trip(
     # 일정 요약 섹션
     # ========================================
     lines.append("")
-    lines.append("=" * 28)
-    lines.append("📊 [일정 요약]")
-    lines.append("=" * 28)
+    lines.append("=" * 14)
+    lines.append("📊 [일정 통계]")
+    lines.append("=" * 14)
     lines.append("")
-    lines.append(f"   ⏱️ 총 이동 시간: 약 {stats.total_travel_time}분")
+    lines.append(f"   ⏱️ 총 이동 시간: {stats.total_travel_time}분")
     lines.append(f"   🚗 총 이동 횟수: {stats.total_moves}회")
-    lines.append(f"   📈 하루 평균 이동: {stats.avg_moves_per_day():.1f}회")
-    lines.append("")
-    lines.append("   📌 주요 기준")
-    lines.append("      - 이동 시간 30분 이내")
-    lines.append("      - 하루 최대 5회 이동")
-    lines.append("      - 연속 2회 이동 후 휴식 권장")
+    lines.append(f"   📈 하루 평균: {stats.avg_moves_per_day():.1f}회")
+    lines.append(f"   ⚙️ 이동 제한: {max_travel_time}분 이내")
     
     # ========================================
-    # 구성 근거 섹션
+    # 구성 근거 섹션 (팩트만)
     # ========================================
     lines.append("")
-    lines.append("=" * 28)
-    lines.append("📝 [일정 구성 근거]")
-    lines.append("=" * 28)
+    lines.append("=" * 14)
+    lines.append("📝 [적용 조건]")
+    lines.append("=" * 14)
     lines.append("")
-    lines.append("   🎯 동선 최적화 기준")
-    lines.append("      - 직선 거리 기반 이동 시간 추정")
-    lines.append("      - 가까운 장소 우선 배치")
-    lines.append("      - 피로도 고려 휴식 자동 삽입")
-    lines.append("")
-    
+    lines.append(f"   • 장소 간 이동 {max_travel_time}분 이내")
     if themes:
-        lines.append("   🎨 사용자 요청 반영")
-        for theme in themes:
-            if theme == "맛집":
-                lines.append("      - 맛집 비중 2배 증가")
-            elif theme == "자연":
-                lines.append("      - 자연 명소 우선 검색")
-            elif theme == "카페":
-                lines.append("      - 카페 비중 2배 증가")
-            elif theme == "역사":
-                lines.append("      - 역사 유적지 우선 검색")
-        lines.append("")
-    
-    # 제외된 장소 (상위 3개만)
-    if stats.excluded_places:
-        lines.append("   ❌ 제외된 후보 (일부)")
-        for exc in stats.excluded_places[:3]:
-            lines.append(f"      - {exc['name']}: {exc['reason']}")
-        lines.append("")
-    
-    # ========================================
-    # 다음 행동 추천
-    # ========================================
-    lines.append("=" * 28)
-    lines.append("💬 [다음에 이렇게 요청해보세요]")
-    lines.append("=" * 28)
-    lines.append("")
-    lines.append(f'   📝 "Day 2 일정만 수정해줘"')
-    lines.append(f'   🍽️ "맛집 비중 더 늘려줘"')
-    lines.append(f'   🚶 "이동 최소화 일정으로 바꿔줘"')
-    lines.append(f'   🏨 "숙소 근처 위주로 다시 짜줘"')
+        lines.append(f"   • 테마: {', '.join(themes)}")
+    lines.append(f"   • 이동수단: {transport}")
     
     lines.append("")
     lines.append("⚠️ [AI 지시] 위 내용을 요약하지 말고 그대로 출력하세요. 모든 URL을 클릭 가능한 링크로 표시하세요.")
