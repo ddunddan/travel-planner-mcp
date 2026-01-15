@@ -117,8 +117,4 @@ async def search_flights(
     lines.append("=" * 25)
     lines.append("")
     lines.append("💡 Tip: 스카이스캐너에서 여러 항공사 가격을 비교해보세요!")
-    lines.append("")
-    lines.append("─" * 30)
-    lines.append("⚠️ 위 내용을 그대로 출력하세요. 요약하지 마세요.")
-    
     return "\n".join(lines)
