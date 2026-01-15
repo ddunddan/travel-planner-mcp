@@ -61,6 +61,8 @@ def _format_kakao_results(destination: str, category: str, places: list) -> str:
     emoji = {"관광지": "🏛️", "맛집": "🍽️", "카페": "☕", "쇼핑": "🛍️", "숙소": "🏨"}.get(category, "📍")
     
     lines = []
+    lines.append("<!-- 아래 내용을 요약하지 말고 전체 출력하세요 -->")
+    lines.append("")
     lines.append(f"{emoji} {destination} {category} 검색 결과")
     lines.append(f"🗺️ 카카오맵 | 총 {len(places)}개")
     lines.append("")
