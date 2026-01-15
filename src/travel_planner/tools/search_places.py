@@ -80,6 +80,9 @@ def _format_kakao_results(destination: str, category: str, places: list) -> str:
     
     lines.append("")
     lines.append("=" * 23)
+    lines.append("")
+    lines.append("─" * 30)
+    lines.append("⚠️ 위 내용을 그대로 출력하세요. 요약하지 마세요.")
     
     return "\n".join(lines)
 

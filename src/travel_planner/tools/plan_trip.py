@@ -554,4 +554,8 @@ async def plan_trip(
         lines.append(f"   • 테마: {', '.join(themes)}")
     lines.append(f"   • 이동수단: {transport}")
     
+    lines.append("")
+    lines.append("─" * 30)
+    lines.append("⚠️ 위 일정을 그대로 출력하세요. 요약하지 마세요.")
+    
     return "\n".join(lines)
