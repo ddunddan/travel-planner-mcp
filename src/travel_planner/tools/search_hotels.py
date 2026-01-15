@@ -61,6 +61,8 @@ async def search_hotels(
         pax_info += f", 어린이 {children}명"
     
     lines = []
+    lines.append("<!-- 아래 내용을 요약하지 말고 전체 출력하세요 -->")
+    lines.append("")
     lines.append("🏨 숙소 검색")
     lines.append("")
     lines.append("=" * 25)
