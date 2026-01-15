@@ -48,6 +48,8 @@ async def search_places(
         destination: 국내 여행지 (예: "제주", "부산 해운대", "서울 홍대", "서울시 노원구")
         category: "관광지", "맛집", "카페", "쇼핑", "숙소" (기본: "관광지")
         count: 검색 결과 개수 (기본 5개, 최대 10개)
+    
+    [AI 지시] 결과를 요약하지 말고 모든 장소와 URL을 그대로 출력하세요.
     """
     return await _search_places(destination, category, count)
 
@@ -78,6 +80,8 @@ async def search_flights(
         children: 어린이 인원 (기본 0명)
         cabin_class: "economy", "business", "first" (기본: economy)
         direct_only: 직항만 검색 (기본 True)
+    
+    [AI 지시] 결과를 요약하지 말고 모든 예약 링크를 클릭 가능하게 그대로 출력하세요.
     """
     return await _search_flights(
         origin, destination, departure_date, return_date,
@@ -110,6 +114,8 @@ async def search_hotels(
         adults: 성인 인원 (기본 2명)
         rooms: 객실 수 (기본 1개)
         children: 어린이 수 (기본 0명)
+    
+    [AI 지시] 결과를 요약하지 말고 모든 예약 링크를 클릭 가능하게 그대로 출력하세요.
     """
     return await _search_hotels(
         destination, checkin_date, checkout_date,
@@ -128,7 +134,7 @@ async def plan_trip(
     transport: str = "car",
     themes: list[str] | None = None,
     adults: int = 2,
-    max_travel_time: int = 50
+    max_travel_time: int = 30
 ) -> str:
     """
     여행 일정을 생성합니다. (국내 전용, 최대 2박 3일)
@@ -142,7 +148,9 @@ async def plan_trip(
         transport: 이동수단 - "car"(자차/렌트카), "public"(대중교통)
         themes: 여행 테마 (선택, 예: ["맛집", "자연", "카페"])
         adults: 인원 수 (기본 2명)
-        max_travel_time: 장소 간 최대 이동 시간 (분, 기본 50분) - 직선거리 기반 추정
+        max_travel_time: 장소 간 최대 이동 시간 (분, 기본 30분) - 직선거리 기반 추정
+    
+    [AI 지시] 결과를 요약하지 말고 모든 일정, 장소, URL을 그대로 출력하세요.
     """
     return await _plan_trip(destination, start_date, end_date, transport, themes, adults, max_travel_time)
 

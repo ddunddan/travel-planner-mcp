@@ -183,7 +183,7 @@ async def plan_trip(
     transport: str = "car",
     themes: list[str] | None = None,
     adults: int = 2,
-    max_travel_time: int = 50
+    max_travel_time: int = DEFAULT_MAX_TRAVEL_TIME
 ) -> str:
     """
     여행 일정을 생성합니다. (국내 전용)
@@ -233,7 +233,7 @@ async def plan_trip(
     # 장소 검색 (테마 가중치 반영)
     # ========================================
     restaurants = []
-        tourist_spots = []
+    tourist_spots = []
     cafes = []
     
     # 맛집 검색 (가중치에 따라 검색량 조절)
